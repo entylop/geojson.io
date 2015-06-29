@@ -1,13 +1,15 @@
+require('qs-hash');
+require('../lib/custom_hash.js');
+
 var popup = require('../lib/popup'),
-    customHash = require('../lib/custom_hash.js'),
-    qs = require('qs-hash'),
+    escape = require('escape-html'),
     LGeo = require('leaflet-geodesy'),
     writable = false,
     showStyle = true,
     makiValues = require('../../data/maki.json'),
     maki = '';
 
-for (i = 0; i < makiValues.length; i++) {
+for (var i = 0; i < makiValues.length; i++) {
     maki += '<option value="' + makiValues[i].icon + '">';
 }
 
@@ -17,8 +19,8 @@ module.exports = function(context, readonly) {
 
     function map(selection) {
         context.map = L.mapbox.map(selection.node(), null, {
-                infoControl: false,
-                attributionControl: true
+                infoControl: true,
+                attributionControl: false
             })
             .setView([20, 0], 2)
             .addControl(L.mapbox.geocoderControl('mapbox.places-permanent', {
@@ -54,8 +56,8 @@ module.exports = function(context, readonly) {
             .on('draw:created', created)
             .on('popupopen', popup(context));
 
-        context.map.attributionControl.addAttribution('<a target="_blank" href="http://tmcw.wufoo.com/forms/z7x4m1/">Feedback</a>');
-        context.map.attributionControl.addAttribution('<a target="_blank" href="http://geojson.io/about.html">About</a>');
+        context.map.infoControl.addInfo('<a target="_blank" href="http://tmcw.wufoo.com/forms/z7x4m1/">Feedback</a>');
+        context.map.infoControl.addInfo('<a target="_blank" href="http://geojson.io/about.html">About</a>');
 
         function update() {
             geojsonToLayer(context.mapLayer.toGeoJSON(), context.mapLayer);
@@ -102,9 +104,17 @@ function geojsonToLayer(geojson, layer) {
 
 function bindPopup(l) {
 
-    var properties = l.toGeoJSON().properties,
+    var props = JSON.parse(JSON.stringify(l.toGeoJSON().properties)),
         table = '',
         info = '';
+
+    var properties = {};
+
+    // Steer clear of XSS
+    for (var k in props) {
+        var e = escape(k);
+        properties[e] = escape(props[k]);
+    }
 
     if (!properties) return;
 
